@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="蓄水池">
+<title>蓄水池</title>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-512.png">
+<meta name="theme-color" content="#F7F6F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1B1A18" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7F6F2; --card:#FFFFFF; --ink:#3A3936; --muted:#98938A; --faint:#C9C4BA; --line:#E6E2DA;
+  --life:#8FA6AE; --life-deep:#6F8B95; --game:#C4AE84; --game-deep:#A88F62;
+  --red:#7F1D24; --glass:#FBFAF7; --shade:rgba(40,36,30,.28);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1B1A18; --card:#242320; --ink:#ECE9E3; --muted:#9C978E; --faint:#5B5850; --line:#33312D;
+    --life:#6F8B95; --life-deep:#8FA6AE; --game:#9E8962; --game-deep:#C4AE84;
+    --red:#E0727A; --glass:#201F1C; --shade:rgba(0,0,0,.55); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1B1A18; --card:#242320; --ink:#ECE9E3; --muted:#9C978E; --faint:#5B5850; --line:#33312D;
+  --life:#6F8B95; --life-deep:#8FA6AE; --game:#9E8962; --game-deep:#C4AE84;
+  --red:#E0727A; --glass:#201F1C; --shade:rgba(0,0,0,.55); color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Noto Sans SC","PingFang SC","Hiragino Sans GB",system-ui,sans-serif;font-weight:400;
+  -webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--life-deep);outline-offset:3px}
+main{max-width:440px;margin:0 auto;padding:28px 22px 120px}
+
+/* month */
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.month{display:flex;align-items:center;gap:6px}
+.month h1{margin:0;font-size:1.05rem;font-weight:500;letter-spacing:.04em;min-width:7.5em;text-align:center}
+.arrow{border:0;background:none;width:36px;height:36px;border-radius:50%;color:var(--muted);font-size:1.1rem}
+.arrow:disabled{opacity:.25;cursor:default}
+.icon-btn{border:0;background:none;color:var(--muted);font-size:.9rem;padding:8px 4px}
+
+/* life tank */
+.life{display:grid;grid-template-columns:118px 1fr;gap:26px;align-items:end}
+.tank{position:relative;height:250px;border-radius:22px;background:var(--glass);
+  border:1px solid var(--line);overflow:hidden}
+.fill{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--life);
+  transition:height 1.1s cubic-bezier(.22,1,.36,1),background-color .6s ease}
+.fill.warn{background:#C99A8E}
+.fill.over{background:var(--red)}
+.fill svg{position:absolute;top:-7px;left:0;width:200%;height:8px}
+.fill svg path{fill:currentColor}
+.fill{color:var(--life)}
+.fill.warn{color:#C99A8E}.fill.over{color:var(--red)}
+@media (prefers-reduced-motion:no-preference){ .fill svg{animation:drift 9s linear infinite} }
+@keyframes drift{to{transform:translateX(-50%)}}
+.pace{position:absolute;left:0;right:0;height:0;border-top:1px dashed var(--muted);opacity:.7;
+  transition:bottom 1.1s cubic-bezier(.22,1,.36,1)}
+.label{font-size:.85rem;color:var(--muted);margin:0 0 6px}
+.big{font-size:2.5rem;font-weight:300;line-height:1.05;letter-spacing:-.01em;margin:0}
+.big.over{color:var(--red)}
+.of{font-size:.85rem;color:var(--muted);margin:8px 0 18px}
+.stat{display:flex;justify-content:space-between;font-size:.88rem;padding:9px 0;border-top:1px solid var(--line)}
+.stat span:first-child{color:var(--muted)}
+.legend{font-size:.75rem;color:var(--faint);margin-top:10px;display:flex;gap:6px;align-items:center}
+.legend i{display:inline-block;width:14px;border-top:1px dashed var(--muted)}
+
+/* game bar */
+.game{margin-top:34px;padding-top:22px;border-top:1px solid var(--line)}
+.game-head{display:flex;justify-content:space-between;align-items:baseline}
+.game-head .val{font-size:1.25rem;font-weight:300}
+.game-head .val.over{color:var(--red)}
+.bar{height:6px;border-radius:3px;background:var(--line);margin-top:12px;overflow:hidden}
+.bar div{height:100%;width:0;background:var(--game);border-radius:3px;
+  transition:width 1.1s cubic-bezier(.22,1,.36,1),background-color .6s}
+.bar div.over{background:var(--red)}
+.game .of{margin:8px 0 0}
+
+/* list */
+h2{font-size:.85rem;font-weight:500;color:var(--muted);margin:42px 0 6px;letter-spacing:.04em}
+ul{list-style:none;margin:0;padding:0}
+li{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line);
+  animation:in .5s cubic-bezier(.22,1,.36,1) both}
+@keyframes in{from{opacity:0;transform:translateY(-6px)}}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+.dot.life{background:var(--life)}.dot.game{background:var(--game)}
+li .what{flex:1;min-width:0;font-size:.95rem}
+li .what small{display:block;color:var(--muted);font-size:.75rem;margin-top:3px}
+li .v{font-size:.95rem}
+li .del{border:0;background:none;color:var(--faint);font-size:1rem;width:30px;height:30px}
+.empty{color:var(--muted);font-size:.9rem;padding:18px 0;border:0;animation:none}
+
+/* add button */
+.add{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  border:0;background:var(--ink);color:var(--bg);border-radius:999px;padding:15px 38px;font-size:1rem;
+  letter-spacing:.08em;box-shadow:0 8px 24px var(--shade);transition:transform .25s cubic-bezier(.22,1,.36,1)}
+.add:active{transform:translateX(-50%) scale(.96)}
+.add[hidden]{display:none}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:var(--shade);opacity:0;pointer-events:none;transition:opacity .35s ease;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:480px;margin:0 auto;background:var(--card);
+  border-radius:22px 22px 0 0;padding:12px 22px calc(26px + env(safe-area-inset-bottom,0px));
+  transform:translateY(105%);transition:transform .5s cubic-bezier(.22,1,.36,1)}
+.sheet.on{transform:none}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 18px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border-radius:12px;padding:3px;position:relative;margin-bottom:16px}
+.seg button{border:0;background:none;padding:9px;border-radius:10px;position:relative;z-index:1;font-size:.92rem;color:var(--muted);transition:color .3s}
+.seg button[aria-pressed="true"]{color:var(--ink)}
+.seg .knob{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);background:var(--card);border-radius:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);transition:transform .4s cubic-bezier(.22,1,.36,1)}
+.seg.right .knob{transform:translateX(100%)}
+.methods{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;transition:opacity .3s,max-height .4s;max-height:60px;overflow:hidden}
+.methods.hide{opacity:0;max-height:0;margin:0}
+.chip{border:1px solid var(--line);background:none;border-radius:999px;padding:7px 14px;font-size:.85rem;color:var(--muted);transition:all .25s}
+.chip[aria-pressed="true"]{border-color:var(--ink);color:var(--ink)}
+.cur{display:inline-grid;grid-template-columns:1fr 1fr;background:var(--bg);border-radius:10px;padding:3px;position:relative;margin-bottom:6px;width:136px}
+.cur button{border:0;background:none;padding:6px 0;border-radius:8px;position:relative;z-index:1;font-size:.82rem;color:var(--muted);transition:color .3s}
+.cur button[aria-pressed="true"]{color:var(--ink)}
+.cur .knob{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);background:var(--card);border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);transition:transform .4s cubic-bezier(.22,1,.36,1)}
+.cur.right .knob{transform:translateX(100%)}
+.conv{font-size:.8rem;color:var(--muted);min-height:1.2em;margin:8px 0 0;transition:opacity .3s}
+.amt{display:flex;align-items:baseline;gap:6px;border-bottom:1px solid var(--line);padding:6px 0 10px}
+.amt span{font-size:1.4rem;color:var(--muted);font-weight:300}
+.amt input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:2.2rem;font-weight:300;color:var(--ink);padding:0}
+.amt input:focus-visible{outline:none}
+.quick{display:flex;gap:8px;margin:12px 0 4px}
+.quick button{flex:1;border:0;background:var(--bg);border-radius:10px;padding:9px 0;font-size:.85rem;color:var(--muted)}
+.note{width:100%;border:0;border-bottom:1px solid var(--line);background:none;font:inherit;font-size:.92rem;color:var(--ink);padding:12px 0;margin-top:6px}
+.note:focus-visible{outline:none;border-color:var(--ink)}
+.primary{width:100%;border:0;background:var(--ink);color:var(--bg);border-radius:14px;padding:15px;margin-top:20px;font-size:1rem;letter-spacing:.08em}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.sheet h3{font-size:1rem;font-weight:500;margin:0 0 18px}
+.hint{font-size:.8rem;color:var(--muted);line-height:1.7;margin:4px 0 0}
+
+/* alert */
+.alert{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:28px;pointer-events:none}
+.alert .box{background:var(--card);border-radius:24px;padding:30px 26px 22px;max-width:340px;width:100%;text-align:center;
+  box-shadow:0 20px 60px var(--shade);opacity:0;transform:scale(.92) translateY(10px);
+  transition:opacity .4s ease,transform .55s cubic-bezier(.34,1.4,.5,1)}
+.alert.on{pointer-events:auto}
+.alert.on .box{opacity:1;transform:none}
+.ring{width:64px;height:64px;margin:0 auto 16px}
+.ring circle{fill:none;stroke-width:4}
+.ring .bg{stroke:var(--line)}
+.ring .fg{stroke:var(--life-deep);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;
+  stroke-dasharray:176;stroke-dashoffset:176;transition:stroke-dashoffset 1.2s cubic-bezier(.22,1,.36,1) .2s}
+.alert h4{font-size:1.1rem;font-weight:500;margin:0 0 10px}
+.alert p{font-size:.9rem;line-height:1.75;color:var(--muted);margin:0}
+.alert p b{color:var(--ink);font-weight:500}
+.alert button{margin-top:22px;width:100%;border:0;background:var(--bg);border-radius:12px;padding:12px;font-size:.95rem}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));z-index:25;
+  transform:translate(-50%,20px);opacity:0;pointer-events:none;background:var(--ink);color:var(--bg);
+  border-radius:999px;padding:10px 10px 10px 20px;display:flex;gap:14px;align-items:center;font-size:.88rem;white-space:nowrap;
+  transition:opacity .3s,transform .45s cubic-bezier(.22,1,.36,1)}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{border:0;background:rgba(255,255,255,.14);color:inherit;border-radius:999px;padding:6px 14px;font-size:.85rem}
+.status{font-size:.72rem;color:var(--faint);text-align:center;margin-top:34px}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation:none!important}}
+
+.inc{color:var(--life-deep)}
+.saving{padding:22px 0 14px;border-top:1px solid var(--line);margin-top:18px}
+.saving .big{margin:6px 0 4px;font-size:2.2rem;color:var(--inv)}
+.saving .row2{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.saving .sub{font-size:.8rem;color:var(--muted);margin:0}
+.ghost{border:1px solid var(--line);background:none;border-radius:999px;padding:8px 16px;font-size:.85rem;color:var(--ink);transition:border-color .25s}
+.ghost:active{border-color:var(--ink)}
+.sw.save{background:var(--inv)}
+:root{--inv:#9EA88C}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--inv:#7F8A6E}}
+:root[data-theme="dark"]{--inv:#7F8A6E}
+.ov{margin-bottom:10px}
+.ov-head{display:flex;justify-content:space-between;align-items:baseline}
+.ov-total{font-size:1.2rem;font-weight:300}
+.stack{display:flex;gap:2px;height:10px;border-radius:5px;overflow:hidden;margin:14px 0 12px}
+.stack div{height:100%;width:0;transition:width 1.1s cubic-bezier(.22,1,.36,1)}
+.s-fixed{background:var(--faint)}.s-inv{background:var(--inv)}.s-life{background:var(--life)}.s-game{background:var(--game)}
+.ov-row{display:grid;grid-template-columns:8px 4.5em auto 1fr;gap:10px;align-items:center;font-size:.88rem;padding:6px 0}
+.ov-row em{font-style:normal;color:var(--muted);font-size:.78rem;text-align:right}
+.sw{display:inline-block;width:8px;height:8px;border-radius:2px;flex:none}
+.sw.fixed{background:var(--faint)}.sw.inv{background:var(--inv)}.sw.life{background:var(--life)}.sw.game{background:var(--game)}
+.pool-head .sw{margin-right:8px;vertical-align:1px}
+.warnline{font-size:.8rem;color:var(--muted);margin:4px 0 0}
+.warnline:empty{display:none}
+.pool{padding:24px 0 6px;border-top:1px solid var(--line);margin-top:18px}
+.pool-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.pool-head .label{margin:0}
+.pool-head .sub{font-size:.78rem;color:var(--muted);text-align:right}
+.pool .big{margin:6px 0 14px;font-size:2.2rem}
+.pbar{position:relative;height:8px;border-radius:4px;background:var(--line);margin-bottom:12px}
+.pfill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:4px;transition:width 1.1s cubic-bezier(.22,1,.36,1),background-color .6s}
+.pfill.life{background:var(--life)}.pfill.game{background:var(--game)}
+.pfill.warn{background:#C99A8E}.pfill.over{background:var(--red)}
+.tick{position:absolute;top:-5px;bottom:-5px;width:2px;margin-left:-1px;background:var(--ink);opacity:.4;border-radius:1px;transition:left 1.1s cubic-bezier(.22,1,.36,1)}
+#legend i{width:2px;height:12px;border:0;background:var(--ink);opacity:.4}
+.rowchips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.sec-label{font-size:.75rem;color:var(--faint);margin:2px 0 6px}
+.cats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.collapse{transition:opacity .3s,max-height .45s cubic-bezier(.22,1,.36,1);max-height:200px;overflow:hidden}
+.collapse.hide{opacity:0;max-height:0;margin:0}
+.sheet{max-height:92vh;overflow-y:auto}
+/* breakdown */
+.bd{margin-top:8px}
+.bd button{display:grid;grid-template-columns:5.5em 1fr auto;gap:12px;align-items:center;width:100%;border:0;background:none;
+  padding:9px 0;text-align:left;font-size:.88rem;border-radius:8px;transition:opacity .3s}
+.bd button.dim{opacity:.35}
+.bd .track{height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.bd .track div{height:100%;width:0;border-radius:3px;background:var(--life);transition:width 1s cubic-bezier(.22,1,.36,1)}
+.bd .track div.g{background:var(--game)}
+.bd .amtx{color:var(--muted);font-size:.85rem}
+.filters{display:flex;gap:8px;margin:4px 0 4px;flex-wrap:wrap}
+.filters .chip{padding:5px 13px;font-size:.8rem}
+.empty-bd{font-size:.88rem;color:var(--muted);padding:10px 0}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div class="month">
+      <button class="arrow" id="prev" aria-label="上个月">‹</button>
+      <h1 id="monthTitle">—</h1>
+      <button class="arrow" id="next" aria-label="下个月">›</button>
+    </div>
+    <button class="icon-btn" id="openSettings">预算设置</button>
+  </div>
+
+  <section class="ov" aria-label="本月收入分配">
+    <div class="ov-head"><span class="label" style="margin:0">本月收入</span><span class="num ov-total" id="ovTotal">¥0</span></div>
+    <div class="stack" id="stack"><div class="s-fixed"></div><div class="s-inv"></div><div class="s-life"></div><div class="s-game"></div></div>
+    <div class="ov-row"><i class="sw fixed"></i><span>房租水电</span><span class="num" id="ovFixed"></span><em>固定，每月自动扣</em></div>
+    <div class="ov-row"><i class="sw inv"></i><span>定投</span><span class="num" id="ovInv"></span><em id="ovInvYear"></em></div>
+    <p class="warnline" id="ovWarn"></p>
+  </section>
+
+  <section class="saving" aria-label="额外储蓄">
+    <div class="pool-head"><span class="label"><i class="sw save"></i>额外储蓄</span><span class="sub num" id="saveMonth"></span></div>
+    <p class="big num" id="saveBal">¥0</p>
+    <div class="row2"><p class="sub num" id="saveTotal"></p><button class="ghost" id="openXfer" type="button">转到生活费或游戏</button></div>
+  </section>
+
+  <section class="pool" aria-label="生活费">
+    <div class="pool-head"><span class="label"><i class="sw life"></i>生活费还剩</span><span class="sub num" id="lifeOf"></span></div>
+    <p class="big num" id="lifeLeft">¥0</p>
+    <div class="pbar"><div class="pfill life" id="lifeBar"></div><div class="tick" id="pace"></div></div>
+    <div class="stat"><span>已用</span><span class="num" id="lifeSpent">¥0</span></div>
+    <div class="stat" id="lifeInRow"><span>额外进账</span><span class="num inc" id="lifeIn">¥0</span></div>
+    <div class="stat"><span id="dailyLabel">每天可用</span><span class="num" id="lifeDaily">—</span></div>
+  </section>
+
+  <section class="pool" aria-label="游戏充值">
+    <div class="pool-head"><span class="label"><i class="sw game"></i>游戏充值还剩</span><span class="sub num" id="gameOf"></span></div>
+    <p class="big num" id="gameLeft">¥0</p>
+    <div class="pbar"><div class="pfill game" id="gameBar"></div><div class="tick" id="gamePace"></div></div>
+    <div class="stat"><span>已充</span><span class="num" id="gameSpent">¥0</span></div>
+    <div class="stat" id="gameInRow"><span>额外进账</span><span class="num inc" id="gameIn">¥0</span></div>
+  </section>
+  <p class="legend" id="legend"><i></i>竖线是按今天的日期，钱应该剩到的位置</p>
+
+  <h2 id="bdTitle">本月花在哪</h2>
+  <div class="bd" id="bd"></div>
+
+  <h2 id="listTitle">本月记录</h2>
+  <div class="filters" id="filters"></div>
+  <ul id="list"></ul>
+  <p class="status" id="status"></p>
+</main>
+
+<button class="add" id="openAdd">记一笔</button>
+<div class="scrim" id="scrim"></div>
+
+<div class="sheet" id="addSheet" role="dialog" aria-label="记一笔" aria-hidden="true">
+  <div class="grab"></div>
+  <div class="seg" id="typeSeg">
+    <div class="knob"></div>
+    <button data-t="out" aria-pressed="true">支出</button>
+    <button data-t="in" aria-pressed="false">进账</button>
+  </div>
+
+  <p class="sec-label" id="poolLabel">从哪个池子扣</p>
+  <div class="rowchips" id="pools"></div>
+
+  <div class="collapse" id="methodsWrap">
+    <p class="sec-label" id="methodLabel">方式</p>
+    <div class="rowchips" id="methods"></div>
+  </div>
+
+  <div class="collapse" id="catsWrap">
+    <p class="sec-label" id="catLabel">类别（可不选）</p>
+    <div class="cats" id="cats"></div>
+  </div>
+
+  <div class="cur" id="curSeg">
+    <div class="knob"></div>
+    <button data-c="JPY" aria-pressed="true">日元</button>
+    <button data-c="CNY" aria-pressed="false">人民币</button>
+  </div>
+  <div class="amt"><span id="curSym">¥</span><input id="amt" class="num" type="number" inputmode="decimal" step="any" placeholder="0" min="0"></div>
+  <p class="conv num" id="conv"></p>
+  <div class="quick" id="quick">
+    <button data-v="1000">+1,000</button><button data-v="5000">+5,000</button><button data-v="10000">+10,000</button>
+  </div>
+  <input class="note" id="note" type="text" placeholder="备注（可不填）" maxlength="40">
+  <button class="primary" id="confirmAdd">扣掉</button>
+</div>
+
+<div class="sheet" id="xferSheet" role="dialog" aria-label="从额外储蓄转出" aria-hidden="true">
+  <div class="grab"></div>
+  <h3>从额外储蓄转出</h3>
+  <p class="sec-label">转到哪里</p>
+  <div class="rowchips" id="xferTo"></div>
+  <div class="amt"><span>¥</span><input id="xferAmt" class="num" type="number" inputmode="numeric" placeholder="0" min="1"></div>
+  <p class="conv num" id="xferHint"></p>
+  <button class="primary" id="confirmXfer">转过去</button>
+</div>
+
+<div class="sheet" id="setSheet" role="dialog" aria-label="预算设置" aria-hidden="true">
+  <div class="grab"></div>
+  <h3>每月预算</h3>
+  <div class="field"><label for="bIncome">每月固定收入</label>
+    <div class="amt"><span>¥</span><input id="bIncome" class="num" type="number" inputmode="numeric"></div></div>
+  <div class="field"><label for="bFixed">房租水电（固定）</label>
+    <div class="amt"><span>¥</span><input id="bFixed" class="num" type="number" inputmode="numeric"></div></div>
+  <div class="field"><label for="bInv">每月定投</label>
+    <div class="amt"><span>¥</span><input id="bInv" class="num" type="number" inputmode="numeric"></div></div>
+  <div class="field"><label for="bLife">生活费（吃饭、日用品、交通、聚会等）</label>
+    <div class="amt"><span>¥</span><input id="bLife" class="num" type="number" inputmode="numeric"></div></div>
+  <div class="field"><label for="bGame">游戏充值</label>
+    <div class="amt"><span>¥</span><input id="bGame" class="num" type="number" inputmode="numeric"></div></div>
+  <div class="field"><label for="bRate">汇率：1 人民币 = 多少日元</label>
+    <div class="amt"><span>¥</span><input id="bRate" class="num" type="number" inputmode="decimal" step="any"></div></div>
+  <p class="hint">网页没法自动连实时汇率，偶尔查一下更新这里就行。改汇率只影响之后记的账。</p>
+  <p class="hint">房租水电和定投每月自动算作已扣，不用手动记。固定的工资已经算在预算里，不用记成进账；只记额外的收入。每月1号自动开始新的一个月。</p>
+  <button class="primary" id="saveSet">保存</button>
+  <p class="sec-label" style="margin-top:26px">备份</p>
+  <p class="hint">记录只保存在这台手机里。建议每个月导出一次备份，存到“ファイル”App 的 iCloud Drive。换手机时用“导入备份”恢复。</p>
+  <div class="row2" style="display:flex;gap:10px;margin-top:12px">
+    <button class="ghost" id="exportBk" type="button">导出备份</button>
+    <button class="ghost" id="importBk" type="button">导入备份</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </div>
+</div>
+
+<div class="alert" id="alert" role="alertdialog" aria-modal="true" aria-labelledby="alertTitle">
+  <div class="box">
+    <svg class="ring" viewBox="0 0 64 64" aria-hidden="true"><circle class="bg" cx="32" cy="32" r="28"/><circle class="fg" id="ringFg" cx="32" cy="32" r="28"/></svg>
+    <h4 id="alertTitle"></h4>
+    <p id="alertBody"></p>
+    <button id="alertOk">知道了</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toastText"></span><button id="undo">撤销</button></div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const LS = "pool-state-v2";
+  const NAMES = {life:"生活费", game:"游戏充值"};
+  const OUT_METHODS = ["取现金","PayPay充值","刷卡","其他"];
+  const IN_METHODS = ["现金","银行转账","PayPay","其他"];
+  const OUT_CATS = ["饮食","外食聚会","交通","日用品","衣服","医疗","学习","其他"];
+  const IN_CATS = ["兼职","奖金","红包礼金","卖二手","退款","理财收益","其他"];
+  const POOLS_OUT = [["life","生活费"],["game","游戏充值"]];
+  const POOLS_IN = [["save","存进额外储蓄"],["life","加回生活费"],["game","加回游戏"]];
+
+  let state = { budgets:{life:120000, game:30000}, entries:[], alerts:{}, rate:23, income:400000, fixed:150000, invest:100000, monthly:{} };
+  let docRef = null, viewOffset = 0, lastAdded = null, toastTimer = null;
+  let form = { type:"out", pool:"life", method:"取现金", cat:"", cur:"JPY" };
+  let filter = { type:"all", cat:"" };
+
+  const yen = n => "¥" + Math.round(n).toLocaleString("ja-JP");
+  const cny = n => Math.round(n/state.rate).toLocaleString("zh-CN") + " 元";
+  const yuan = n => (Math.round(n*100)/100).toLocaleString("zh-CN") + " 元";
+  const signed = n => n<0 ? "−"+yen(-n) : yen(n);
+  const mk = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+  const viewDate = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth()+viewOffset, 1); };
+  const sum = (m, p, type) => state.entries.filter(e=>e.m===m && e.p===p && e.type===type).reduce((s,e)=>s+e.amt,0);
+  const budgetOf = (p, m) => (state.budgets[p]||0) + sum(m, p, "in") + sum(m, p, "xfer");
+  const saveBalance = () => state.entries.reduce((s2,e)=> s2 + (e.type==="in"&&e.p==="save" ? e.amt : e.type==="xfer" ? -e.amt : 0), 0);
+
+  function normalize(s){
+    const out = { budgets:{life:120000, game:30000}, entries:[], alerts:{}, rate:23, income:400000, fixed:150000, invest:100000, monthly:{} };
+    if(!s || typeof s!=="object") return out;
+    if(s.budgets){ out.budgets.life = Number(s.budgets.life)||120000; out.budgets.game = Number(s.budgets.game)||30000; }
+    if(Array.isArray(s.entries)) out.entries = s.entries.filter(e=>e && e.t && e.amt).map(e=>({
+      t:e.t, m:e.m || mk(new Date(e.t)), type:["in","out","xfer"].includes(e.type)?e.type:"out",
+      p:e.p==="none"?"save":(["life","game","save"].includes(e.p)?e.p:"life"),
+      k:e.k==="取现"?"取现金":e.k==="PayPay"&&e.type!=="in"?"PayPay充值":(e.k||"其他"),
+      cat:e.cat||"", amt:Number(e.amt)||0, note:e.note||"",
+      cur:e.cur==="CNY"?"CNY":"JPY", orig:Number(e.orig)||Number(e.amt)||0, rate:Number(e.rate)||1
+    }));
+    if(s.alerts && typeof s.alerts==="object") out.alerts = s.alerts;
+    if(Number(s.rate)>0) out.rate = Number(s.rate);
+    ["income","fixed","invest"].forEach(k=>{ if(Number(s[k])>=0 && s[k]!==undefined && s[k]!==null) out[k] = Number(s[k]); });
+    if(s.monthly && typeof s.monthly==="object") out.monthly = s.monthly;
+    return out;
+  }
+
+  function tween(el, to, fmt){
+    const from = el._v ?? to; el._v = to;
+    if(matchMedia("(prefers-reduced-motion: reduce)").matches || from===to){ el.textContent = fmt(to); return; }
+    const t0 = performance.now(), dur = 900;
+    cancelAnimationFrame(el._raf);
+    const step = now => { const k = Math.min(1,(now-t0)/dur), e = 1-Math.pow(1-k,4);
+      el.textContent = fmt(from + (to-from)*e); if(k<1) el._raf = requestAnimationFrame(step); };
+    el._raf = requestAnimationFrame(step);
+  }
+
+  function render(){
+    const vd = viewDate(), m = mk(vd), today = new Date(), isNow = viewOffset===0;
+    const mName = (vd.getMonth()+1)+"月";
+    $("monthTitle").textContent = vd.getFullYear()+"年"+mName;
+    $("next").disabled = isNow;
+    $("openAdd").hidden = !isNow;
+    $("listTitle").textContent = isNow ? "本月记录" : mName+"记录";
+    $("bdTitle").textContent = isNow ? "本月花在哪" : mName+"花在哪";
+
+    // monthly snapshot of fixed items (for the investment total)
+    if(isNow && !state.monthly[m]){ state.monthly[m] = { fixed: state.fixed, invest: state.invest }; setTimeout(save, 0); }
+    const snap = state.monthly[m] || { fixed: state.fixed, invest: state.invest };
+
+    // overview
+    const fx = Number(snap.fixed)||0, iv = Number(snap.invest)||0, bl = state.budgets.life, bg = state.budgets.game;
+    $("ovTotal").textContent = yen(state.income);
+    const tot = Math.max(state.income, fx+iv+bl+bg) || 1;
+    [fx, iv, bl, bg].forEach((v,i)=>{ $("stack").children[i].style.width = (v/tot*100) + "%"; });
+    $("ovFixed").textContent = yen(fx);
+    $("ovInv").textContent = yen(iv);
+    const yr = String(vd.getFullYear());
+    const invYear = Object.entries(state.monthly).filter(([k])=>k.startsWith(yr) && k<=m).reduce((s2,[,v])=>s2+(Number(v.invest)||0),0);
+    $("ovInvYear").textContent = invYear>0 ? yr+"年已投 "+yen(invYear) : "";
+    const diff = state.income - (fx+iv+bl+bg);
+    $("ovWarn").textContent = diff>0 ? "还有 "+yen(diff)+" 没分配，可以在预算设置里安排" : diff<0 ? "分配的钱比收入多 "+yen(-diff)+"，请在预算设置里调整" : "";
+
+    const dim = new Date(vd.getFullYear(), vd.getMonth()+1, 0).getDate();
+    const daysLeft = isNow ? dim - today.getDate() + 1 : 0;
+    const pacePct = isNow ? daysLeft/dim*100 : null;
+    $("legend").style.display = isNow ? "" : "none";
+
+    function bar(el, tick, L, B){
+      const fr = B>0 ? Math.max(0, Math.min(1, L/B)) : 0;
+      el.style.width = fr*100 + "%";
+      el.classList.toggle("over", L<0);
+      el.classList.toggle("warn", L>=0 && fr<0.2);
+      tick.style.display = pacePct===null ? "none" : "";
+      if(pacePct!==null) tick.style.left = pacePct + "%";
+    }
+    const around = (L, base) => (L<0 ? "超出约 "+cny(-L) : "约 "+cny(L)) + "，预算 " + yen(base);
+
+    // life
+    const B = budgetOf("life", m), S = sum(m,"life","out"), I = sum(m,"life","in"), L = B - S;
+    bar($("lifeBar"), $("pace"), L, B);
+    tween($("lifeLeft"), L, signed);
+    $("lifeLeft").classList.toggle("over", L<0);
+    $("lifeOf").textContent = around(L, bl);
+    tween($("lifeSpent"), S, yen);
+    $("lifeInRow").style.display = I>0 ? "" : "none";
+    $("lifeIn").textContent = "+" + yen(I);
+    if(isNow){
+      $("dailyLabel").textContent = "还有 "+daysLeft+" 天，每天可用";
+      $("lifeDaily").textContent = L>0 ? yen(L/daysLeft) : "—";
+    } else {
+      $("dailyLabel").textContent = "结余";
+      $("lifeDaily").textContent = signed(L);
+    }
+
+    // game
+    const GB = budgetOf("game", m), GS = sum(m,"game","out"), GI = sum(m,"game","in"), GL = GB - GS;
+    bar($("gameBar"), $("gamePace"), GL, GB);
+    tween($("gameLeft"), GL, signed);
+    $("gameLeft").classList.toggle("over", GL<0);
+    $("gameOf").textContent = around(GL, bg);
+    tween($("gameSpent"), GS, yen);
+    $("gameInRow").style.display = GI>0 ? "" : "none";
+    $("gameIn").textContent = "+" + yen(GI);
+
+    // savings (all-time balance)
+    const bal = saveBalance();
+    tween($("saveBal"), bal, yen);
+    const sm = sum(m, "save", "in");
+    $("saveMonth").textContent = sm>0 ? (isNow?"本月":(vd.getMonth()+1)+"月")+"存入 +"+yen(sm) : "";
+    const allIn = state.entries.filter(e=>e.type==="in"&&e.p==="save").reduce((a,e)=>a+e.amt,0);
+    $("saveTotal").textContent = allIn>0 ? "累计存入 "+yen(allIn)+"，约 "+cny(bal) : "额外的收入会存到这里";
+    $("openXfer").hidden = !isNow || bal<=0;
+
+    renderBreakdown(m);
+    renderList(m, isNow);
+  }
+
+  function renderBreakdown(m){
+    const outs = state.entries.filter(e=>e.m===m && e.type==="out");
+    const groups = {};
+    outs.forEach(e=>{ const key = e.p==="game" ? "游戏充值" : (e.cat || "未分类"); groups[key] = (groups[key]||0) + e.amt; });
+    const rows = Object.entries(groups).sort((a,b)=>b[1]-a[1]);
+    const box = $("bd"); box.innerHTML = "";
+    if(!rows.length){ const p = document.createElement("p"); p.className = "empty-bd"; p.textContent = "还没有支出。"; box.appendChild(p); return; }
+    const max = rows[0][1];
+    rows.forEach(([name, v])=>{
+      const b = document.createElement("button"); b.type = "button";
+      if(filter.cat && filter.cat!==name) b.classList.add("dim");
+      const n = document.createElement("span"); n.textContent = name;
+      const tr = document.createElement("span"); tr.className = "track";
+      const bar = document.createElement("div"); if(name==="游戏充值") bar.className = "g"; tr.appendChild(bar);
+      const a = document.createElement("span"); a.className = "amtx num"; a.textContent = yen(v);
+      b.append(n, tr, a); box.appendChild(b);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{ bar.style.width = (v/max*100) + "%"; }));
+      b.onclick = () => { filter.cat = filter.cat===name ? "" : name; if(filter.cat) filter.type = "all"; render(); };
+    });
+  }
+
+  function renderList(m, isNow){
+    // filter chips
+    const fl = $("filters"); fl.innerHTML = "";
+    [["all","全部"],["out","支出"],["in","进账"]].forEach(([k,label])=>{
+      const c = document.createElement("button"); c.className = "chip"; c.type = "button"; c.textContent = label;
+      c.setAttribute("aria-pressed", !filter.cat && filter.type===k);
+      c.onclick = () => { filter.type = k; filter.cat = ""; render(); };
+      fl.appendChild(c);
+    });
+    if(filter.cat){
+      const c = document.createElement("button"); c.className = "chip"; c.type = "button";
+      c.setAttribute("aria-pressed","true"); c.textContent = filter.cat + "  ×";
+      c.onclick = () => { filter.cat = ""; render(); }; fl.appendChild(c);
+    }
+
+    let items = state.entries.filter(e=>e.m===m);
+    if(filter.type!=="all") items = items.filter(e=>e.type===filter.type || (filter.type==="in" && e.type==="xfer"));
+    if(filter.cat) items = items.filter(e=>e.type==="out" && (e.p==="game" ? "游戏充值" : (e.cat||"未分类"))===filter.cat);
+    items.sort((a,b)=>b.t-a.t);
+
+    const list = $("list"); list.innerHTML = "";
+    if(!items.length){
+      const li = document.createElement("li"); li.className = "empty";
+      li.textContent = filter.cat || filter.type!=="all" ? "没有符合条件的记录。" : (isNow ? "还没有记录。点下面的“记一笔”开始。" : "这个月没有记录。");
+      list.appendChild(li); return;
+    }
+    items.forEach((e,i)=>{
+      const li = document.createElement("li"); li.style.animationDelay = Math.min(i,8)*30 + "ms";
+      const dot = document.createElement("span"); dot.className = "dot " + (e.p==="game"?"game":"life");
+      if(e.type!=="out"){ dot.style.background = "transparent"; dot.style.border = "1.5px solid " + (e.p==="save"||e.type==="xfer" ? "var(--inv)" : "var(--life-deep)"); }
+      const w = document.createElement("div"); w.className = "what";
+      const title = e.type==="xfer" ? "从额外储蓄转出" : e.type==="in" ? (e.cat || "进账") : (e.p==="game" ? "游戏充值" : (e.cat || e.k));
+      w.textContent = title + (e.note ? "・"+e.note : "");
+      const sm = document.createElement("small"); const d = new Date(e.t);
+      const bits = [(d.getMonth()+1)+"月"+d.getDate()+"日"];
+      if(e.type==="in") bits.push(e.k + (e.p==="save" ? "，存进额外储蓄" : "，加回"+NAMES[e.p]));
+      if(e.type==="xfer") bits.push("转到"+NAMES[e.p]);
+      else if(e.p==="life" && e.cat) bits.push(e.k);
+      if(e.cur==="CNY") bits.push("≈ "+yen(e.amt)+"（汇率 "+e.rate+"）");
+      sm.textContent = bits.join("　");
+      w.appendChild(sm);
+      const v = document.createElement("span"); v.className = "v num" + (e.type==="in" ? " inc" : "");
+      const sign = e.type==="in" ? "+" : e.type==="xfer" ? "→ " : "−";
+      v.textContent = sign + (e.cur==="CNY" ? yuan(e.orig) : yen(e.amt));
+      const x = document.createElement("button"); x.className = "del"; x.textContent = "×"; x.setAttribute("aria-label","删除这条");
+      x.onclick = () => { if(confirm("删除这条记录？")){ state.entries = state.entries.filter(z=>z.t!==e.t); save(); } };
+      li.append(dot, w, v, x); list.appendChild(li);
+    });
+  }
+
+  async function save(){
+    render();
+    try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
+    if(docRef){
+      try{ await docRef.set(state); }catch(e){}
+    }
+  }
+
+  // sheets
+  let openSheet = null;
+  function show(sheet){ openSheet = sheet; sheet.classList.add("on"); sheet.setAttribute("aria-hidden","false"); $("scrim").classList.add("on"); }
+  function hide(){
+    if(!openSheet) return;
+    openSheet.classList.remove("on"); openSheet.setAttribute("aria-hidden","true"); openSheet = null;
+    $("scrim").classList.remove("on"); document.activeElement && document.activeElement.blur();
+  }
+  $("scrim").onclick = () => { hide(); closeAlert(); };
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ hide(); closeAlert(); } });
+
+  // add form
+  function chips(container, items, current, onPick, allowNone){
+    container.innerHTML = "";
+    items.forEach(it=>{
+      const [val, label] = Array.isArray(it) ? it : [it, it];
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = label;
+      b.setAttribute("aria-pressed", val===current);
+      b.onclick = () => { onPick(allowNone && val===current ? "" : val); };
+      container.appendChild(b);
+    });
+  }
+  function renderForm(){
+    const out = form.type==="out";
+    $("typeSeg").classList.toggle("right", !out);
+    [...$("typeSeg").querySelectorAll("button")].forEach(b=>b.setAttribute("aria-pressed", b.dataset.t===form.type));
+    $("poolLabel").textContent = out ? "从哪个池子扣" : "这笔钱放到哪";
+    chips($("pools"), out ? POOLS_OUT : POOLS_IN, form.pool, v=>{ form.pool = v; if(v==="life" && out) setCur("JPY"); renderForm(); });
+    const showDetail = !(out && form.pool==="game");
+    $("methodsWrap").classList.toggle("hide", !showDetail);
+    $("catsWrap").classList.toggle("hide", !showDetail);
+    $("methodLabel").textContent = out ? "怎么花的" : "怎么进来的";
+    chips($("methods"), out ? OUT_METHODS : IN_METHODS, form.method, v=>{ form.method = v; renderForm(); });
+    $("catLabel").textContent = out ? "花在什么上（可不选）" : "什么收入（可不选）";
+    chips($("cats"), out ? OUT_CATS : IN_CATS, form.cat, v=>{ form.cat = v; renderForm(); }, true);
+    $("confirmAdd").textContent = out ? "扣掉" : "存入";
+  }
+  function setType(t){
+    if(form.type===t) return;
+    form.type = t;
+    form.pool = t==="out" ? "life" : "save";
+    form.method = t==="out" ? OUT_METHODS[0] : IN_METHODS[1];
+    form.cat = "";
+    renderForm();
+  }
+  $("typeSeg").addEventListener("click", e=>{ const b = e.target.closest("button"); if(b) setType(b.dataset.t); });
+
+  function setCur(c){
+    form.cur = c;
+    $("curSeg").classList.toggle("right", c==="CNY");
+    [...$("curSeg").querySelectorAll("button")].forEach(b=>b.setAttribute("aria-pressed", b.dataset.c===c));
+    $("curSym").textContent = c==="CNY" ? "元" : "¥";
+    const vals = c==="CNY" ? [30, 100, 328] : [1000, 5000, 10000];
+    [...$("quick").children].forEach((b,i)=>{ b.dataset.v = vals[i]; b.textContent = "+" + vals[i].toLocaleString("ja-JP"); });
+    updateConv();
+  }
+  function updateConv(){
+    const v = Number($("amt").value);
+    $("conv").textContent = form.cur==="CNY" && v>0 ? "≈ " + yen(v*state.rate) + "（1 元 = " + state.rate + " 日元）" : "";
+  }
+  $("curSeg").addEventListener("click", e=>{ const b = e.target.closest("button"); if(b) setCur(b.dataset.c); });
+  $("amt").addEventListener("input", updateConv);
+  $("quick").addEventListener("click", e=>{
+    const b = e.target.closest("button"); if(!b) return;
+    $("amt").value = (Number($("amt").value)||0) + Number(b.dataset.v); updateConv();
+  });
+
+  $("openAdd").onclick = () => {
+    $("amt").value = ""; $("note").value = ""; form.cat = "";
+    renderForm(); updateConv(); show($("addSheet"));
+  };
+  $("openSettings").onclick = () => {
+    $("bLife").value = state.budgets.life; $("bGame").value = state.budgets.game; $("bRate").value = state.rate;
+    $("bIncome").value = state.income; $("bFixed").value = state.fixed; $("bInv").value = state.invest;
+    show($("setSheet"));
+  };
+
+  function add(){
+    const orig = Number($("amt").value);
+    if(!orig || orig<=0){ $("amt").focus(); return; }
+    const rate = form.cur==="CNY" ? state.rate : 1;
+    const amt = Math.round(orig*rate);
+    const t = Date.now(), m = mk(new Date(t));
+    const out = form.type==="out";
+    const p = form.pool;
+    const beforeSpent = sum(m, p, "out");
+    const entry = { t, m, type:form.type, p,
+      k: out && p==="game" ? "游戏充值" : form.method,
+      cat: out && p==="game" ? "" : form.cat,
+      amt, note: $("note").value.trim(), cur: form.cur, orig: form.cur==="CNY" ? orig : amt, rate };
+    state.entries.push(entry);
+    const cutoff = t - 800*24*3600*1000;
+    state.entries = state.entries.filter(e=>e.t>cutoff || e.p==="save" || e.type==="xfer");
+    lastAdded = entry;
+    hide(); save();
+    const shown = form.cur==="CNY" ? yuan(orig) : yen(amt);
+    toast(out ? (NAMES[p] + " −" + shown) : ("进账 +" + shown));
+    if(out) setTimeout(()=>checkAlert(p, m, beforeSpent, beforeSpent+amt), 650);
+  }
+  $("confirmAdd").onclick = add;
+  $("amt").addEventListener("keydown", e=>{ if(e.key==="Enter") add(); });
+
+  let xferTo = "life";
+  function renderXfer(){
+    chips($("xferTo"), [["life","生活费"],["game","游戏充值"]], xferTo, v=>{ xferTo = v; renderXfer(); });
+    const v = Number($("xferAmt").value), bal = saveBalance();
+    $("xferHint").textContent = v>bal ? "额外储蓄只有 "+yen(bal) : "额外储蓄现在有 "+yen(bal);
+  }
+  $("xferAmt").addEventListener("input", renderXfer);
+  $("openXfer").onclick = () => { $("xferAmt").value = ""; xferTo = "life"; renderXfer(); show($("xferSheet")); };
+  $("confirmXfer").onclick = () => {
+    const amt = Math.round(Number($("xferAmt").value)), bal = saveBalance();
+    if(!amt || amt<=0 || amt>bal){ $("xferAmt").focus(); renderXfer(); return; }
+    const t = Date.now();
+    const entry = { t, m: mk(new Date(t)), type:"xfer", p:xferTo, k:"转账", cat:"", amt, note:"", cur:"JPY", orig:amt, rate:1 };
+    state.entries.push(entry); lastAdded = entry;
+    hide(); save();
+    toast("转到"+NAMES[xferTo]+" "+yen(amt));
+  };
+
+  $("saveSet").onclick = () => {
+    const l = Math.round(Number($("bLife").value)), g = Math.round(Number($("bGame").value)), r = Number($("bRate").value);
+    if(l>0) state.budgets.life = l; if(g>0) state.budgets.game = g; if(r>0) state.rate = Math.round(r*1000)/1000;
+    const nI = $("bIncome").value, nF = $("bFixed").value, nV = $("bInv").value;
+    if(nI!=="" && Number(nI)>=0) state.income = Math.round(Number(nI));
+    if(nF!=="" && Number(nF)>=0) state.fixed = Math.round(Number(nF));
+    if(nV!=="" && Number(nV)>=0) state.invest = Math.round(Number(nV));
+    state.monthly[mk(new Date())] = { fixed: state.fixed, invest: state.invest };
+    hide(); save();
+  };
+
+  function toast(text){
+    $("toastText").textContent = text; $("toast").classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(()=>$("toast").classList.remove("on"), 4000);
+  }
+  $("undo").onclick = () => {
+    if(!lastAdded) return;
+    state.entries = state.entries.filter(e=>e.t!==lastAdded.t); lastAdded = null;
+    $("toast").classList.remove("on"); closeAlert(); save();
+  };
+
+  function checkAlert(p, m, before, after){
+    const B = budgetOf(p, m); if(!B) return;
+    const hit = [100, 80, 50].find(x => before < B*x/100 && after >= B*x/100);
+    if(!hit) return;
+    state.alerts[m] = state.alerts[m] || {};
+    const key = p+hit; if(state.alerts[m][key]) return;
+    state.alerts[m][key] = 1; save();
+    const d = new Date(), dim = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+    const daysLeft = dim - d.getDate() + 1, left = B - after;
+    const usedPct = after/B, datePct = (d.getDate()-1)/dim, name = NAMES[p];
+    const dateLine = "今天是 <b>"+(d.getMonth()+1)+"月"+d.getDate()+"日</b>，这个月还剩 <b>"+daysLeft+" 天</b>。";
+    let title, body;
+    if(hit===50){
+      title = name + "已经用掉一半";
+      body = dateLine + "剩下 <b>"+yen(left)+"</b>，平均每天约 <b>"+yen(left/daysLeft)+"</b>。<br>" +
+        (usedPct > datePct + 0.1 ? "比日期进度快了一些，接下来稍微收一收。" : "节奏还不错，照这样就好。");
+    } else if(hit===80){
+      title = name + "只剩两成了";
+      body = dateLine + "还剩 <b>"+yen(left)+"</b>，平均每天约 <b>"+yen(left/daysLeft)+"</b>。花之前多想一下。";
+    } else {
+      title = name + "已经用完了";
+      body = dateLine + (p==="game" ? "这个月的充值就先到这里吧。" : "剩下的日子尽量少花，超出的部分会显示成负数。");
+    }
+    openAlert(title, body, Math.min(1, usedPct));
+  }
+  function openAlert(title, body, pct){
+    $("alertTitle").textContent = title; $("alertBody").innerHTML = body;
+    const fg = $("ringFg"); fg.style.transition = "none"; fg.style.strokeDashoffset = 176;
+    fg.style.stroke = pct>=1 ? "var(--red)" : "var(--life-deep)";
+    fg.getBoundingClientRect(); fg.style.transition = "";
+    $("alert").classList.add("on"); $("scrim").classList.add("on");
+    requestAnimationFrame(()=>{ fg.style.strokeDashoffset = 176*(1-pct); });
+    setTimeout(()=>$("alertOk").focus(), 300);
+  }
+  function closeAlert(){
+    if(!$("alert").classList.contains("on")) return;
+    $("alert").classList.remove("on"); if(!openSheet) $("scrim").classList.remove("on");
+  }
+  $("alertOk").onclick = closeAlert;
+
+  $("prev").onclick = () => { viewOffset--; filter = {type:"all", cat:""}; render(); };
+  $("next").onclick = () => { if(viewOffset<0){ viewOffset++; filter = {type:"all", cat:""}; render(); } };
+
+  let lastMonth = mk(new Date());
+  function tick(){ const m = mk(new Date()); if(m!==lastMonth){ lastMonth = m; viewOffset = 0; } render(); }
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) tick(); });
+  setInterval(tick, 60*1000);
+
+  try{
+    const raw = localStorage.getItem(LS) || localStorage.getItem("pool-state-v1");
+    if(raw) state = normalize(JSON.parse(raw));
+  }catch(e){}
+  renderForm(); render();
+
+  $("status").textContent = "记录保存在这台手机里，记得定期备份";
+
+  // backup
+  $("exportBk").onclick = () => {
+    const d = new Date();
+    const name = "蓄水池备份-" + d.getFullYear() + String(d.getMonth()+1).padStart(2,"0") + String(d.getDate()).padStart(2,"0") + ".json";
+    const blob = new Blob([JSON.stringify(state)], {type:"application/json"});
+    const file = new File([blob], name, {type:"application/json"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      navigator.share({files:[file], title:name}).catch(()=>{});
+    } else {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }
+  };
+  $("importBk").onclick = () => $("importFile").click();
+  $("importFile").onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    try{
+      const data = JSON.parse(await f.text());
+      if(!data || !Array.isArray(data.entries)) throw new Error("bad");
+      if(!confirm("用这个备份替换现在的全部记录？")) return;
+      state = normalize(data); hide(); save(); toast("备份已导入");
+    }catch(err){ alert("这个文件不是蓄水池的备份。"); }
+    e.target.value = "";
+  };
+})();
+</script>
+</body>
+</html>
